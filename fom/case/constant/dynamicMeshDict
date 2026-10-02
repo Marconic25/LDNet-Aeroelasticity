@@ -1,0 +1,82 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  7                                     |
+|   \\  /    A nd           | Website:  https://openfoam.org                  |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      dynamicMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dynamicFvMesh   dynamicMotionSolverFvMesh;
+
+motionSolverLibs
+(
+    "libmultiInterpolatingSolidBodyMotionSolver.so"
+);
+
+motionSolver    multiInterpolatingSolidBodyMotionSolver;
+
+multiInterpolatingSolidBodyMotionSolverCoeffs
+{
+    // Global SLERP distances (overridden per-zone below).
+    innerDistance   0.3;
+    outerDistance   4.0;
+
+    // Laplacian background diffusion: replaces piecewise-smooth SLERP gradient
+    // with ∇²(d)=0 solution → smooth morph across coarse cells above flap TE.
+    enableBgLaplacian   true;
+
+    // ── Pass 2: flapZone — overlayZone blend (delta displacement added on top of wingZone SLERP)
+    // overlayZone=true → pts[p] += sf*(flapRigid(p0) - pts[p]) blended by distance from flap patch.
+    // innerDistance/outerDistance: narrow taper zone close to flap surface.
+    // frontStartX/frontEndX: cosine x-ramp suppresses overlay for x<=frontStartX (wing_main region).
+    //   frontStartX=0.720 matches wing_main TE exactly → zero overlay on wing_main cells.
+    //   frontEndX=0.760: 40mm cosine ramp across flap-wing gap.
+    flapZone
+    {
+        overlayZone             true;
+        innerDistance           0.05;
+        outerDistance           0.25;    // covers expanded flapZone (y_max now +0.050, BL ~10mm above flap)
+        frontStartX             0.720;   // matches wing_main TE (x=0.7201) exactly
+        frontEndX               0.760;   // flap LE side — 40mm cosine ramp across gap
+        patch                   flap;
+        solidBodyMotionFunction tabulated6DoFMotion;
+        tabulated6DoFMotionCoeffs
+        {
+            CofG             (0.775 -0.045 0.125);
+            timeDataFileName "constant/flapMotion.dat";
+        }
+    }
+
+    // ── Pass 1: wingZone — SLERP blend (whole-domain smooth morphing)
+    // Standard dominant-zone SLERP from points0.
+    // distMode bbox: rectangular iso-contours → smooth ramp above/below chord.
+    // Covers full domain including flap region (rigidOnly pass overwrites flap cells).
+    // MVP: wingMotion.dat has zero heave/pitch → only flap delta is active.
+    wingZone
+    {
+        innerDistance   0.3;
+        outerDistance   4.0;
+        distMode        bbox;
+        distCentreX     0.40;
+        distCentreY     0.0;
+        distHalfX       0.36;
+        distHalfY       0.075;
+        patch           wing_main;
+        solidBodyMotionFunction tabulated6DoFMotion;
+        tabulated6DoFMotionCoeffs
+        {
+            CofG             (0.40 0.0 0.125);
+            timeDataFileName "constant/wingMotion.dat";
+        }
+    }
+}
+
+// ************************************************************************* //

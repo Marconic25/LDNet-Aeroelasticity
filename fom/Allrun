@@ -1,0 +1,29 @@
+#!/bin/bash
+# Full-order model from scratch, in the folder given as argument (default run/):
+#   1. mesh around wing and flap, blockMesh and snappyHexMesh, extruded to one cell
+#      across the span with empty front and back patches
+#   2. steady RANS solution at the trim state, simpleFoam
+#   3. co-simulation case and pre-gust checkpoint: 3 s of co-simulation at trim,
+#      without gust and flap, from which every run of the campaign starts
+# Needs OpenFOAM v7 in the environment and the library of meshMotion/, built with
+#   (cd meshMotion && wmake libso)
+set -e
+cd "${0%/*}"
+RUN=$(realpath -m "${1:-run}")
+mkdir -p "$RUN"
+
+cp -r mesh "$RUN/mesh"
+(cd "$RUN/mesh" && blockMesh && surfaceFeatureExtract && snappyHexMesh -overwrite && checkMesh)
+
+cp -r rans "$RUN/rans"
+(cd "$RUN/rans" && extrudeMesh && createPatch -overwrite && cp -r 0.orig 0 && simpleFoam)
+
+cp -r case "$RUN/case"
+cp -r "$RUN/rans/constant/polyMesh" "$RUN/case/constant/"
+python3 cosim_driver.py --case "$RUN/case" --rans "$RUN/rans" --t-end 3.0 --save-checkpoint 3.0
+
+# Each run of the campaign then starts from the checkpoint, in a copy of the case:
+#   python3 campaign.py campaign.csv
+#   cp -r run/case run/sim_A_000_train
+#   python3 cosim_driver.py --case run/sim_A_000_train <options of the run in campaign.csv>
+#   python3 build_dataset.py run/ ../data/

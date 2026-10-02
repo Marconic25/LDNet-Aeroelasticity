@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+
+# Data and results are not part of the repository: the scripts produce them.
+/data
+/models/TestCase_*/
+
+# OpenFOAM runs of fom/Allrun and validation/
+/fom/run/
+log.*

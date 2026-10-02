@@ -1,0 +1,4 @@
+numpy
+scipy>=1.7
+tensorflow>=2.16
+h5py

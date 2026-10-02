@@ -1,0 +1,96 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  7                                     |
+|   \\  /    A nd           | Website:  https://openfoam.org                  |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      topoSetDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+//
+// wingZone: all near-body cells around wing_main + flap.
+//   These cells move rigidly with the wing body (heave + pitch).
+//   Domain: x[-1.2,5], y[-2.2,2.2], z[0.10,0.15]
+//
+//   Box expanded (2026-02-21) to push zone boundary into coarser cell layers:
+//     y_bottom: -0.50 → -1.30  (183mm cells: 25mm heave = 14% strain, was 56%)
+//     y_top:    +0.35 → +1.10  (92mm cells:  10mm heave = 11% strain, was 22%)
+//   This eliminates severe non-orthogonality (was 81.5°) at the zone boundary.
+//
+// flapZone: cells around flap only.
+//   These cells receive the COMPOSED transform = wing motion + flap delta.
+//   Overlapping cells (in both wingZone and flapZone) take flapZone motion
+//   because multiSolidBodyMotionSolver applies zones in order (last wins).
+//
+// Geometry (from writeMeshObj):
+//   Wing_main surface: x=0.0002..0.7201, y=-0.0684..0.0719
+//   Flap surface:      x=0.7502..0.9934, y=-0.1077..-0.0160
+//   Gap:               x=0.720..0.750 (~30mm)
+//   Hinge (initial):   (0.775, -0.045, 0.125)
+// flapZone x_min set to 0.740 (safely past wing TE at 0.720, inside the gap)
+
+actions
+(
+    // ---- Step 1: cellSet for wingZone ----
+    // Expanded vertically to place zone boundary in coarser background cells.
+    {
+        name    c_wing;
+        type    cellSet;
+        action  new;
+        source  boxToCell;
+        sourceInfo
+        {
+            box (-0.03 -0.15  0.09) (1.03 0.12 0.16); // y_top extended 0.06→0.12 to keep wing TE rigid
+        }
+    }
+
+    // ---- Step 2: cellSet for flapZone ----
+    // rigidOnly=true: tight box wrapping only flap BL cells (no gap, no wake).
+    // x: 0.755 (past flap LE at 0.750; gap cells only exist at x<0.755) to 1.01
+    // y: -0.130 (below flap bottom BL) to -0.012 (below flap top surface at -0.016)
+    // z: unchanged (span slice)
+    // Analysis confirmed: zero gap cells exist at x>0.755, y>-0.016.
+    // Old box x_min=0.745 captured gap cells (x=0.745-0.755, y=-0.004..-0.014)
+    // which collapsed immediately on rigid body rotation.
+    {
+        name    c_flap;
+        type    cellSet;
+        action  new;
+        source  boxToCell;
+        sourceInfo
+        {
+            box (0.755 -0.130 0.09) (1.05  0.050 0.16);  // expanded: x_max 1.01→1.05, y_max 0.020→0.050 to capture all BL rows above flap TE (~10mm)
+        }
+    }
+
+    // ---- Step 3: convert cellSets → cellZones ----
+    {
+        name    wingZone;
+        type    cellZoneSet;
+        action  new;
+        source  setToCellZone;
+        sourceInfo
+        {
+            set c_wing;
+        }
+    }
+
+    {
+        name    flapZone;
+        type    cellZoneSet;
+        action  new;
+        source  setToCellZone;
+        sourceInfo
+        {
+            set c_flap;
+        }
+    }
+);
+
+// ************************************************************************* //

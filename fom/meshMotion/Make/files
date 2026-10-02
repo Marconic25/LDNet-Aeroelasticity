@@ -1,0 +1,3 @@
+multiInterpolatingSolidBodyMotionSolver.C
+
+LIB = $(FOAM_USER_LIBBIN)/libmultiInterpolatingSolidBodyMotionSolver

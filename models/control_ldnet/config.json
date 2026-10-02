@@ -1,0 +1,117 @@
+{
+  "problem": {
+    "space": {
+      "dimension": 2
+    },
+    "input_parameters": [
+      {
+        "name": "U_inf"
+      }
+    ],
+    "input_signals": [
+      {
+        "name": "h"
+      },
+      {
+        "name": "hd"
+      },
+      {
+        "name": "a"
+      },
+      {
+        "name": "ad"
+      },
+      {
+        "name": "delta"
+      },
+      {
+        "name": "W_gust"
+      }
+    ],
+    "output_signals": [
+      {
+        "name": "F_y"
+      },
+      {
+        "name": "M_z"
+      }
+    ],
+    "output_fields": [
+      {
+        "name": "ux"
+      },
+      {
+        "name": "uy"
+      }
+    ]
+  },
+  "normalization": {
+    "space": {
+      "min": [
+        0,
+        0
+      ],
+      "max": [
+        1,
+        1
+      ]
+    },
+    "time": {
+      "time_constant": 0.002
+    },
+    "input_parameters": {
+      "U_inf": {
+        "min": 0,
+        "max": 120
+      }
+    },
+    "input_signals": {
+      "h": {
+        "min": -0.029,
+        "max": 0.009
+      },
+      "hd": {
+        "min": -0.54,
+        "max": 0.62
+      },
+      "a": {
+        "min": -0.014,
+        "max": 0.011
+      },
+      "ad": {
+        "min": -0.93,
+        "max": 0.93
+      },
+      "delta": {
+        "min": -14.09,
+        "max": 14.55
+      },
+      "W_gust": {
+        "min": 0.0,
+        "max": 47.81
+      }
+    },
+    "output_signals": {
+      "F_y": {
+        "min": -18.65,
+        "max": 547.29
+      },
+      "M_z": {
+        "min": -44.99,
+        "max": 42.24
+      }
+    },
+    "output_fields": {
+      "ux": {
+        "min": -50,
+        "max": 150
+      },
+      "uy": {
+        "min": -100,
+        "max": 100
+      }
+    }
+  },
+  "num_latent_states": 10,
+  "lambda_damp": 0.003
+}
